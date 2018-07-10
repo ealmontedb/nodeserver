@@ -84,6 +84,31 @@ app.post('/updateCid', function (req, res) {
     res.send("CId updated");
 }) 
 
+app.post('/submitStatus', function (req, res) {
+    updateStatus(req.body);
+    res.send("status updated");
+}) 
+
+app.post('/updateLang', function (req, res) {
+    q1="select lead_filter_sql from vicidial_lead_filters where lead_filter_id='PFT_STATES'";
+    Promise.all([updateLang(q1)]).then(v=>v[0].lead_filter_sql).then(st=>{
+     
+    if (/mail/.test(st)){
+
+      st=st.replace(/mail in \(.*\)/,"mail in ('"+req.body.lang+"')")
+      console.log(st)
+    }else{
+      st=st+" and mail in ('"+req.body.lang+"')";
+      console.log(st)
+    }
+    query="update vicidial_lead_filters set lead_filter_sql=\""+st+"\" where lead_filter_id='PFT_STATES'";
+    console.log(query)
+    updateLang(query)
+
+
+   }).then(res.send("lang"))
+}) 
+
 function updateCid(v){
 query="update vicidial_campaigns set campaign_cid='"+v+"' where campaign_id ='PFT'";
 
@@ -99,15 +124,62 @@ connection.query(query, function (error, results, fields) {
 }
 
 
-function updateFilter(ar){
-query="update vicidial_lead_filters set lead_filter_sql="+"\"state in ('"+ar.join("','")+"')\""+" where lead_filter_id='PFT_STATES'";
+function updateLang(query){
+
+//query="update vicidial_lead_filters set lead_filter_sql="+"\"state in ('"+ar.join("','")+"')\""+" where lead_filter_id='PFT_STATES'";
 
 
+return new Promise(function(resolve, reject){
+          connection.query(query, function (error, results, fields) {
+            if (error) throw error;
+            resolve(results[0]);
+          });
+      })
+
+}
+
+function updateStatus(v){
+  let st=v.join().replace(/,/g, " ");   
+  query="update vicidial_campaigns set dial_statuses=' "+st+"' where campaign_id ='PFT'";
+  console.log(query)
 
 connection.query(query, function (error, results, fields) {
   if (error) throw error;
   console.log('The solution is: ', results[0]);
 });
+
+
+
+}
+
+
+function updateFilter(ar){
+
+  function readFilter(query){
+   return new Promise((resolve,reject)=>{
+            connection.query(query, function (error, results, fields) {
+                        if (error) throw error;
+                        resolve(results[0]);
+                      });
+                  })
+
+  }
+
+q_read="select lead_filter_sql from vicidial_lead_filters where lead_filter_id='PFT_STATES'";
+
+Promise.all([readFilter(q_read)]).then(x=>x[0].lead_filter_sql).then(st=>{
+   console.log("=>first",st)
+      st=st.replace(/state in \(.*?\)/,"state in ('"+ar.join("','")+"')")
+      st="\""+st+"\""
+      console.log('submit=>',st)
+      query="update vicidial_lead_filters set lead_filter_sql="+st+" where lead_filter_id='PFT_STATES'";
+      connection.query(query, function (error, results, fields) {
+          if (error) throw error;
+          console.log('The solution is: ', results[0]);
+      });
+      
+    }
+)
 
 }
 
