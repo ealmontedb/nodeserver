@@ -63,7 +63,8 @@ app.post('/initialState', function (req, res) {
     x=>{
         const initialValues={
            cid: x[0].campaign_cid,
-           states: x[1].lead_filter_sql.match(/'.{2}'/g).map(v=>v.replace(/'/g,"").toUpperCase())
+           states: x[1].lead_filter_sql.match(/'.{2}'/g).map(v=>v.replace(/'/g,"").toUpperCase()),
+           lang:   x[1].lead_filter_sql.match(/mail in \(.*?\)/g)[0].match(/'(.*)'/)[1]
 
         }
        res.send(initialValues);
