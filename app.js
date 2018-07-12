@@ -5,7 +5,7 @@ var mysql   = require('mysql');
 
 
 var connection = mysql.createConnection({
-  host     : '192.168.0.10',
+  host     : '192.168.0.5',
   user     : 'root',
   password : 'dB0ss99...',
   database : 'asterisk'
@@ -24,9 +24,13 @@ app.use(function(req, res,next) {
 });
 
 
+app.get('/listsManager',function(req,res){
+       
+  res.sendFile('./build/index.html');
 
+});
  
-let query="select state,count(*) as count from vicidial_list where list_id in (69262,69276,69270) group by 1" ;
+let query="select state,count(*) as count from vicidial_list a,vicidial_lists b where a.list_id = b.list_id and b.campaign_id='FRIMEMSP' group by 1" ;
 
 connection.query(query, function (error, results, fields) {
   if (error) throw error;
@@ -49,8 +53,8 @@ app.post('/submit', function (req, res) {
 app.post('/initialState', function (req, res) {
   res.header('Content-Type', 'application/json');
 
-  query="select campaign_cid from vicidial_campaigns  where campaign_id='pft'";
-  query2="select lead_filter_sql from vicidial_lead_filters where lead_filter_id ='PFT_states'";
+  query="select campaign_cid from vicidial_campaigns  where campaign_id='FRIMEMSP'";
+  query2="select lead_filter_sql from vicidial_lead_filters where lead_filter_id ='LIST_GUI'";
   var cal='';
   results=(r)=>{
 
@@ -67,6 +71,14 @@ app.post('/initialState', function (req, res) {
            lang:   x[1].lead_filter_sql.match(/mail in \(.*?\)/g)[0].match(/'(.*)'/)[1]
 
         }
+        if(initialValues.lang==='EN'){
+          
+          initialValues.lang='ENGLISH';
+
+        }else {
+          initialValues.lang='SPANISH';
+        }
+
        res.send(initialValues);
     }
     
@@ -91,8 +103,15 @@ app.post('/submitStatus', function (req, res) {
 }) 
 
 app.post('/updateLang', function (req, res) {
-    q1="select lead_filter_sql from vicidial_lead_filters where lead_filter_id='PFT_STATES'";
+    q1="select lead_filter_sql from vicidial_lead_filters where lead_filter_id='LIST_GUI'";
     Promise.all([updateLang(q1)]).then(v=>v[0].lead_filter_sql).then(st=>{
+      if(req.body.lang==='ENGLISH'){
+
+        req.body.lang='EN';
+      }else{
+
+        req.body.lang='ES';
+      }
      
     if (/mail/.test(st)){
 
@@ -102,7 +121,7 @@ app.post('/updateLang', function (req, res) {
       st=st+" and mail in ('"+req.body.lang+"')";
       console.log(st)
     }
-    query="update vicidial_lead_filters set lead_filter_sql=\""+st+"\" where lead_filter_id='PFT_STATES'";
+    query="update vicidial_lead_filters set lead_filter_sql=\""+st+"\" where lead_filter_id='LIST_GUI'";
     console.log(query)
     updateLang(query)
 
@@ -111,7 +130,7 @@ app.post('/updateLang', function (req, res) {
 }) 
 
 function updateCid(v){
-query="update vicidial_campaigns set campaign_cid='"+v+"' where campaign_id ='PFT'";
+query="update vicidial_campaigns set campaign_cid='"+v+"' where campaign_id ='FRIMEMSP'";
 
 
 
@@ -141,7 +160,7 @@ return new Promise(function(resolve, reject){
 
 function updateStatus(v){
   let st=v.join().replace(/,/g, " ");   
-  query="update vicidial_campaigns set dial_statuses=' "+st+"' where campaign_id ='PFT'";
+  query="update vicidial_campaigns set dial_statuses=' "+st+"' where campaign_id ='FRIMEMSP'";
   console.log(query)
 
 connection.query(query, function (error, results, fields) {
@@ -166,14 +185,14 @@ function updateFilter(ar){
 
   }
 
-q_read="select lead_filter_sql from vicidial_lead_filters where lead_filter_id='PFT_STATES'";
+q_read="select lead_filter_sql from vicidial_lead_filters where lead_filter_id='LIST_GUI'";
 
 Promise.all([readFilter(q_read)]).then(x=>x[0].lead_filter_sql).then(st=>{
    console.log("=>first",st)
       st=st.replace(/state in \(.*?\)/,"state in ('"+ar.join("','")+"')")
       st="\""+st+"\""
       console.log('submit=>',st)
-      query="update vicidial_lead_filters set lead_filter_sql="+st+" where lead_filter_id='PFT_STATES'";
+      query="update vicidial_lead_filters set lead_filter_sql="+st+" where lead_filter_id='LIST_GUI'";
       connection.query(query, function (error, results, fields) {
           if (error) throw error;
           console.log('The solution is: ', results[0]);
@@ -186,7 +205,7 @@ Promise.all([readFilter(q_read)]).then(x=>x[0].lead_filter_sql).then(st=>{
 
 
 function getStatus(ar){
-query="select status,count(*) as count from vicidial_list where list_id in (69262,69276,69270) and state in ('"+ar.join("','")+"') and status in ('REG_C','DROP','N','B','ERI','A','NOTAVA','NA','PDROP','NEW') group by 1";
+query="select status,count(*) as count from vicidial_list a,vicidial_lists b  where a.list_id = b.list_id and b.campaign_id='FRIMEMSP' and state in ('"+ar.join("','")+"') and status in ('REG_C','DROP','N','B','ERI','A','NOTAVA','NA','PDROP','NEW') group by 1";
 
 
 return new Promise(function(resolve, reject){
